@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en" ng-app="ffConsole">
+<head>
+  <meta charset="utf-8">
+  <title>The FatFractal FYI Test Harness</title>
+  <script type="text/javascript">
+    function httpsRedirect() {
+      var httpURL = window.location.hostname + window.location.pathname;
+      var httpsURL = "https://" + httpURL;
+      window.location = httpsURL;
+    }
+    console.log(window.location.href);
+    console.log(!window.location.href.match('^https://') && !window.location.href.match('^http://localhost'));
+    if (!window.location.href.match('^https://') && !window.location.href.match('^http://localhost'))
+      httpsRedirect();
+  </script>
+  <link rel="stylesheet" href="css/app.css"/>
+  <link href="lib/ui-bootstrap/assets/bootstrap.css" rel="stylesheet" media="screen">
+</head>
+<!--
+<body onunload="cleanUp()">
+-->
+<body>
+<div class="navbar" id="navbar" ng-controller="LoginCtrl">
+  <div class="navbar-inner">
+    <img src="img/beta.png" width="240px" class="brand pull-left">
+    <h1 style="margin: 20px -20px">Test Harness</h1>
+    <div class="span4" ui-if="refreshing" ng-cloak spinner style="margin: 20px -20px"></div>
+  </div>
+</div>
+<div class="well" id = "top-level-section">
+  <div class="well" id = "intro-section">
+  <h1>FYI - Combining Data From Collections</h1>
+  <p>This post demonstrates real examples of combining data from various Collections with FatFractal's datagraph.
+  </p>
+  <h4>You can see the data created by this app using the FatFractal DataBrowser (
+    <a href = https://system.fatfractal.com/console/databrowser/databrowser.html?baseUrl=https://fyi.fatfractal.com/combineDataFromCollections target = _blank>
+      here
+    </a>
+    )
+  </h4>
+  <h4>You can access the source code for the sample application (
+    <a href = https://github.com/FatFractal/fyi.combineDataFromCollections target = _blank>
+      here
+    </a>
+    )
+  </h4>
+</div>
+  <div class="well" id = "ffdl-section">
+    <h2>FFDL</h2>
+    <p>This test application includes the following ffdl definition.<br></p>	
+    <div class="well">
+      # Object Types<br>
+      CREATE OBJECTTYPE Person (firstName STRING, lastName STRING, gender STRING, mother REFERENCE /Persons, father REFERENCE /Persons, siblings GRABBAG /Persons, picture BYTEARRAY)<br>
+      CREATE OBJECTTYPE Episode (title STRING, description STRING, season NUMERIC, episode NUMERIC, originalAir DATE)<br>
+      CREATE OBJECTTYPE Debut (person REFERENCE /Persons, episode REFERENCE /Episodes)<br>
+      # Collection Resources<br>
+	  CREATE COLLECTION /Persons OBJECTTYPE Person<br>
+      CREATE COLLECTION /Episodes OBJECTTYPE Episode<br>
+      CREATE COLLECTION /Debuts OBJECTTYPE Debut<br>
+      # Extension Resources<br>
+      CREATE EXTENSION /combineData AS javascript:require('scripts/extensions.js').combineData();<br>
+    </div>
+  </div>
+  <div class="well" id = "extension-section">
+    <h2>Server Extension</h2>
+	<p>This test will show you how to retrieve specific object data using a Server Extension. We first get the Person with firstName "Bart" and then return only the firstName of the person object and the title of the debut episode they appeared in.
+    <div class="well">
+      <p>
+        // The Client Code
+        ff.getObjFromExtension("/ff/ext/combineData?firstName=Bart", function(resp) {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;//handle response<br>
+        });<br>
+      </p>
+      <p>
+        // The Server Exension Code<br>
+        exports.combineData = function() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;var firstName = ff.getExtensionRequestData().httpParameters['firstName'];<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;var person = ff.getObjFromUri("/Persons/(firstName eq '" + firstName + "')")<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;var r = ff.response();<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;var debut = ff.getObjFromUri(person.ffUrl + "/BackReferences.Debuts");<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;var episode = ff.getReferredObject("episode", debut)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;r.result = {firstName:person.firstName,debutEpisodeTitle:episode.title};<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;r.responseCode="200";<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;r.statusMessage = "returned custom object data";<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;r.mimeType = "application/json";<br>
+        }
+      </p>
+    </div>
+    <button id="extension-button" class="btn" onclick="getCustomDataFromExtension('Bart')">Try it!</button>
+    <br>
+    <div id = "extension-response"></div>
+  </div>
+  <div class="well" id="model-section">
+    <h2>The following Models are used with this post</h2>
+    <div class="well">
+      <p>function Person() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.firstName = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.lastName = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.gender = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.mother = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.father = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.siblings = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.picture = null;<br>
+	  }<br>
+      <p>function Episode() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.title = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.description = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.season = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.episode = null;<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.originalAir = null;<br>
+      }<br>
+      <p>function Debut() {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.person = new Person();<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;this.episode = new Episode();<br>
+      }
+      </p>
+    </div>
+  </div>
+</div>
+<!--Scripts-->
+<script src="lib/FatFractal.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/beautify.js"></script>
+</body>
+<script type="text/javascript">
+function Person(obj) {
+   this.firstName = null;
+   this.lastName = null;
+   this.gender = null;
+   this.mother = null;
+   this.father = null;
+   this.siblings = null;
+   this.picture = null;
+   if(obj) {
+	  this.firstName = obj.firstName;
+      this.lastName = obj.lastName;
+      this.gender = obj.gender;
+      this.mother = obj.mother;
+      this.father = obj.father;
+      this.siblings = obj.siblings;
+	  this.picture = obj.picture;
+   }
+   this.printMe = function() {
+	   if(this.picture) this.picture = "binary data: " + this.picture.length + " bytes";
+	   if(this.mother && this.mother.picture) this.mother.picture = "binary data: " + this.mother.picture.length + " bytes";
+	   if(this.father && this.father.picture) this.father.picture = "binary data: " + this.father.picture.length + " bytes";
+	   if(this.mother && this.mother.mother && this.mother.mother.picture) this.mother.mother.picture = "binary data: " + this.mother.mother.picture.length + " bytes";
+	   if(this.mother && this.mother.father && this.mother.father.picture) this.mother.father.picture = "binary data: " + this.mother.father.picture.length + " bytes";
+	   if(this.father && this.father.mother && this.father.mother.picture) this.father.mother.picture = "binary data: " + this.father.mother.picture.length + " bytes";
+	   if(this.father && this.father.father && this.father.father.picture) this.father.father.picture = "binary data: " + this.father.father.picture.length + " bytes";
+	   return this;
+   }
+}
+function getCustomDataFromExtension() {
+    var el = document.getElementById('extension-response');
+    el.innerHTML = "";
+    ff.getObjFromExtension("/ff/ext/combineData?firstName=Bart", function(resp) {
+        var str = js_beautify(JSON.stringify(resp), {
+           indent_size: 4,
+           indent_char: '&nbsp;',
+           linefeed_char: '<br>'
+        });
+        el.innerHTML = "<br><div class = 'well blue'>" + str + "</div>";
+    }, function(code, msg) {
+       el.innerHTML = "<br><div class = 'well red'>Got an error: " + msg + "</div>";
+       console.error("getCustomDataFromExtension() getArrayFromUri Error: " + code + " " + msg);
+    });
+}
+function arrayBufferToDataUri(arrayBuffer) {
+  var base64 = '',
+    encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+    bytes = new Uint8Array(arrayBuffer), byteLength = bytes.byteLength,
+    byteRemainder = byteLength % 3, mainLength = byteLength - byteRemainder,
+    a, b, c, d, chunk;
+  for (var i = 0; i < mainLength; i = i + 3) {
+    chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    a = (chunk & 16515072) >> 18; b = (chunk & 258048) >> 12;
+    c = (chunk & 4032) >> 6; d = chunk & 63;
+    base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d];
+  }
+  if (byteRemainder == 1) {
+    chunk = bytes[mainLength];
+    a = (chunk & 252) >> 2;
+    b = (chunk & 3) << 4;
+    base64 += encodings[a] + encodings[b] + '==';
+  } else if (byteRemainder == 2) {
+    chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
+    a = (chunk & 16128) >> 8;
+    b = (chunk & 1008) >> 4;
+    c = (chunk & 15) << 2;
+    base64 += encodings[a] + encodings[b] + encodings[c] + '=';
+  }
+  return "data:image/png;base64," + base64;
+}
+var ff = new FatFractal();
+ff.login("test_user", "T3st_Us3r", function() {});
+</script>
+</html>
